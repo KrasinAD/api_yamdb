@@ -1,8 +1,12 @@
-from django.shortcuts import get_object_or_404
-from reviews.models import Category, Genre, Title
+# from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import LimitOffsetPagination
+
+from .permissions import IsAuthorOrReadOnly
+from .serializers import CommentSerializer, ReviewSerializer
+from reviews.models import Category, Genre, Title, Review
+
 
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
@@ -25,3 +29,36 @@ class GenreViewSet(viewsets.ModelViewSet):
     search_fields = ('^name',)
 #   serializer_class = CategorySerializer
 #   permission_classes = 
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    serializer_class = ReviewSerializer
+    permission_classes = (IsAuthorOrReadOnly,)
+
+    def get_queryset(self):
+        title_id = self.kwargs.get('title_id')
+        return Review.objects.filter(title=title_id)
+
+    def perform_create(self, serializer):
+        title_id = self.kwargs.get('title_id')
+        title = Review.objects.get(pk=title_id)
+        serializer.save(author=self.request.user, title=title)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    serializer_class = CommentSerializer
+    permission_classes = (IsAuthorOrReadOnly,)
+
+    def get_queryset(self):
+        title_id = self.kwargs.get('title_id')
+        review_id = self.kwargs.get('review_id')
+        review = Review.objects.select_related('comments').filter(
+            title=title_id).get(pk=review_id)
+        return review.comments.all()
+
+    def perform_create(self, serializer):
+        title_id = self.kwargs.get('title_id')
+        review_id = self.kwargs.get('review_id')
+        review = Review.objects.select_related('comments').filter(
+            title=title_id).get(pk=review_id)
+        serializer.save(author=self.request.user, review=review)

@@ -1,5 +1,6 @@
-from django.contrib.auth import get_user_model
+# from django.contrib.auth import get_user_model
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 # User = get_user_model()
 
@@ -37,6 +38,7 @@ class Genre(models.Model):
     def __str__(self):
         return self.name
 
+
 class GenreTitle(models.Model):
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
     title = models.ForeignKey(Title, on_delete=models.CASCADE)
@@ -45,13 +47,17 @@ class GenreTitle(models.Model):
 class Review(models.Model):
     text = models.TextField()
     author = models.IntegerField()
-    score = models.IntegerField(choices=[(i, i) for i in range(1, 11)])
+    score = models.PositiveSmallIntegerField(
+        default=None,
+        validators=(MaxValueValidator(10), MinValueValidator(1))
+    )
     pub_date = models.DateTimeField(auto_now_add=True)
     title = models.ForeignKey(Title,
                               on_delete=models.CASCADE,
-                              related_name='reviews'
-                              )
-#   author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='titles')
+                              related_name='reviews')
+#   author = models.ForeignKey(User,
+#                              on_delete=models.CASCADE,
+#                              related_name='reviews')
 
     def __str__(self):
         return self.text
@@ -60,16 +66,13 @@ class Review(models.Model):
 class Comment(models.Model):
     review = models.ForeignKey(Review,
                                on_delete=models.CASCADE,
-                               related_name='comments'
-                               )
+                               related_name='comments')
     pub_date = models.DateTimeField(auto_now_add=True)
     author = models.IntegerField()
     text = models.TextField()
-    title = models.ForeignKey(Title,
-                              on_delete=models.CASCADE,
-                              related_name='comments'
-                              )
-#   author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='titles')
-    
+#   author = models.ForeignKey(User,
+#                              on_delete=models.CASCADE,
+#                              related_name='comments')
+
     def __str__(self):
         return self.text

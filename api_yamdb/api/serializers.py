@@ -11,9 +11,18 @@ class YearValidator:
         if value < 1900 or value > timezone.now().year:
             raise serializers.ValidationError('Invalid Year')
 
+
+class GenreSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        fields = ('slug', 'name')
+        model = Genre
+
+
 class TitleSerializer(serializers.ModelSerializer):
     rating = serializers.SerializerMethodField()
     year = serializers.IntegerField(validators=[YearValidator()])
+    genre = GenreSerializer(many=True)
 
     class Meta:
         fields = '__all__'
@@ -21,6 +30,17 @@ class TitleSerializer(serializers.ModelSerializer):
 
     def get_rating(self, obj):
         return obj.reviews.all().aggregate(Avg('score'))['score__avg']
+  
+    def create(self, validated_data):
+        if 'genre' not in self.initial_data:
+            title = Title.objects.create(**validated_data)
+            return title
+        genres = validated_data.pop('genre')
+        title = Title.objects.create(**validated_data)
+        for genre in genres:
+            current_genre, status = Genre.objects.get_or_create(**genre)
+            GenreTitle.objects.create(genre=current_genre, title=title)
+        return title
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -40,28 +60,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    slug = serializers.SlugRelatedField(required=True)
-    name = serializers.CharField(required=True)
 
     class Meta:
         fields = ('slug', 'name')
         model = Category
-
-
-class GenreSerializer(serializers.ModelSerializer):
-    slug = serializers.SlugRelatedField(required=True)
-    name = serializers.CharField(required=True)
-
-    class Meta:
-        fields = ('slug','name')
-        model = Genre
-
-
-class GenreTitleSerializer(serializers.ModelSerializer):
-    genre = GenreSerializer()
-    title = TitleSerializer()
-    titles = serializers.ManyRelatedField(TitleSerializer)
-
-    class Meta:
-        fields = ('genre', 'title', 'titles')
-        model = GenreTitle

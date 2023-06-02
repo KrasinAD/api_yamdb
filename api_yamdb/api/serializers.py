@@ -1,9 +1,33 @@
-from rest_framework import serializers
+from rest_framework import serializers, validators
 # from rest_framework.relations import SlugRelatedField
 from django.db.models import Avg
 
-from reviews.models import Category, Comment, Genre, GenreTitle, Review, Title
+from reviews.models import Category, Comment, Genre, GenreTitle, Review, Title, CustomUser
 from datetime import timezone
+
+
+class CustomUserSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(
+        validators=[validators.UniqueValidator(queryset=CustomUser.objects.all())]
+    )
+
+    class Meta:
+        model = CustomUser
+        fields = (
+            'first_name',
+            'last_name',
+            'username',
+            'email',
+            'bio',
+            'role',
+        )
+
+    def validate_email(self, value):
+        if len(value) > 254:
+            raise serializers.ValidationError(
+                'Поле Email не должно быть больше 254 символов'
+                )
+        return value
 
 
 class YearValidator:

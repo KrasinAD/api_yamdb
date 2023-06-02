@@ -1,16 +1,15 @@
 from rest_framework import serializers, validators
+from django.core.validators import MaxLengthValidator
 # from rest_framework.relations import SlugRelatedField
 from django.db.models import Avg
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from reviews.models import Category, Comment, Genre, GenreTitle, Review, Title, CustomUser
 from datetime import timezone
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(
-        validators=[validators.UniqueValidator(queryset=CustomUser.objects.all())]
-    )
-
+    
     class Meta:
         model = CustomUser
         fields = (
@@ -22,12 +21,21 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'role',
         )
 
-    def validate_email(self, value):
-        if len(value) > 254:
-            raise serializers.ValidationError(
-                'Поле Email не должно быть больше 254 символов'
-                )
-        return value
+class UserCreateSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    email = serializers.EmailField(
+        validators=[
+            validators.UniqueValidator(queryset=CustomUser.objects.all()),
+            MaxLengthValidator(254),
+        ]
+    )
+
+    def create(self, validated_data):
+        user = CustomUser.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email']
+        )
+        return user
 
 
 class YearValidator:
@@ -88,3 +96,37 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         fields = ('slug', 'name')
         model = Category
+
+
+class TokenObtainPairByEmailSerializer(TokenObtainPairSerializer):
+    email = serializers.EmailField()
+    confirmation_code = serializers.CharField()
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        email = attrs.get('email')
+        confirmation_code = attrs.get('confirmation_code')
+
+        if email and confirmation_code:
+            try:
+                user = CustomUser.objects.get(email=email)
+            except CustomUser.DoesNotExist:
+                raise serializers.ValidationError('Неверный email или код подтверждения')
+            
+            if not user.check_confirmation_code(confirmation_code):
+                raise serializers.ValidationError('Неверный email или код подтверждения')
+            data['user'] = user
+        else:
+            raise serializers.ValidationError('Email и код подтверждения обязательны')
+        return data
+
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['email'] = user.email
+        return token
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['email'] = user.email
+        return token

@@ -38,10 +38,6 @@ class CustomUserManager(BaseUserManager):
         return user
 
 class CustomUser(AbstractBaseUser):
-    username = models.CharField(max_length=150, unique=True)
-    email = models.EmailField()
-    first_name = models.CharField(max_length=150, blank=True)
-    last_name = models.CharField(max_length=150, blank=True)
     bio = models.TextField(blank=True)
     role = models.CharField(max_length=20,
                             choices=CHOICES_ROLES,

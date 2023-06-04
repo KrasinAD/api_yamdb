@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db import models
 
-from review.models import User
+from reviews.models import User
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -10,16 +10,39 @@ class UserCreateSerializer(serializers.ModelSerializer):
         model = User
         fields = ('email', 'username')
 
+    def validate(self, data):
+        if data.get('username') == 'me':
+            raise serializers.ValidationError(
+                'Использовать имя me запрещено'
+            )
+        if User.objects.filter(username=data.get('username')):
+            raise serializers.ValidationError(
+                'Пользователь с таким username уже существует'
+            )
+        if User.objects.filter(email=data.get('email')):
+            raise serializers.ValidationError(
+                'Пользователь с таким email уже существует'
+            )
+        return data
 
-class UserAccessSerializer(serializers.Serializer):
 
-    username = models.CharField(
+class UserTokenSerializer(serializers.Serializer):
+
+    # username = models.CharField(
+    #     max_length=150,
+    #     unique=True,
+    # ),
+
+    username = serializers.RegexField(
+        regex=r'^[\w.@+-]+$',
         max_length=150,
-        unique=True,
-    ),
+        required=True
+    )
 
-    confirmation_code = ()
-
+    confirmation_code = serializers.CharField(
+        max_length=150,
+        required=True
+    )
 
 
 class UserSerializer(serializers.ModelSerializer):

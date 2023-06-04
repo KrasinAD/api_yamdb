@@ -1,18 +1,21 @@
-# from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from reviews.models import CustomUser
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, permissions
 from rest_framework import viewsets
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.decorators import action
+from django.contrib.auth.tokens import default_token_generator
 
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (CommentSerializer,
+                          CustomUserSerializer,
                           CategorySerializer,
                           GenreSerializer,
                           ReviewSerializer,
@@ -99,7 +102,7 @@ class SignupView(APIView):
                              status=status.HTTP_400_BAD_REQUEST
                             )
         
-        confimation_code = '328593'
+        confimation_code = default_token_generator.make_token(user)
 
         send_mail(
             'Код подтверждения',
@@ -135,3 +138,33 @@ class TokenObtainPairByEmailView(TokenObtainPairView):
         tokens = user.get_tokens()
         response.data.update(tokens)
         return response
+
+
+class CustomUserViewSet(viewsets.ModelViewSet):
+    serializer_class = CustomUserSerializer
+    queryset = CustomUser.objects.all()
+    pagination_class = LimitOffsetPagination
+    permission_classes = (IsAuthenticated,)
+    filter_backends = (SearchFilter,)
+    search_fields = ('username',)
+    lookup_field = 'username'
+
+    @action(methods=['GET', 'PATCH'],
+        detail=False,
+        url_path='me',
+        permission_classes= [AllowAny]
+    )
+    def me(self, request):
+        user = get_object_or_404(CustomUser, username=self.request.user)
+        if request.method == 'PATCH':
+            serializer = CustomUserSerializer(
+                user,
+                data=request.data,
+                context ={'request': request}
+            )
+            if serializer.is_valid(raise_exception=True):
+                serializer.save(role='user')
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=400)
+        serializer = self.get_serializer(user, many=False)
+        return Response(serializer.data, status=status.HTTP_200_OK)

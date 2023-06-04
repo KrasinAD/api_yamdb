@@ -45,7 +45,7 @@ class CustomUser(AbstractBaseUser):
                             )
 
     USERNAME_FIELD = 'username'
-    EMAIL_FIELD = 'email'
+    EMAIL_FIELD = ['email']
 
     objects = CustomUserManager()
 
@@ -75,31 +75,32 @@ class Category(models.Model):
         return self.name
 
 
+class Genre(models.Model):
+    slug = models.SlugField(max_length=50, unique=True)
+    name = models.CharField(max_length=256)
+
+    def __str__(self):
+        return self.name
+
+
 class Title(models.Model):
     name = models.CharField(max_length=256)
     description = models.TextField(blank=True, null=True)
     rating = models.IntegerField(blank=True, null=True, default=None)
     year = models.IntegerField()
-    category = models.ForeignKey(Category,
-                                 on_delete=models.SET_NULL,
-                                 related_name='titles'
-                                 )
-
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        related_name='titles'
+    )
+    genre = models.ManyToManyField(
+        Genre,
+        through='GenreTitle',
+        related_name='genres'
+    )
+    
     def __str__(self):
         return self.description
-
-
-class Genre(models.Model):
-    slug = models.SlugField(max_length=50, unique=True)
-    name = models.CharField(max_length=256)
-    titles = models.ManyToManyField(Title,
-                                    through='GenreTitle',
-                                    related_name='genres'
-                                    )
-
-    def __str__(self):
-        return self.name
-
 
 class GenreTitle(models.Model):
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE)

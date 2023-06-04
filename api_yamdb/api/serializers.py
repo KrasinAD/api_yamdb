@@ -1,5 +1,4 @@
 from rest_framework import serializers, validators
-from django.core.validators import MaxLengthValidator
 # from rest_framework.relations import SlugRelatedField
 from django.db.models import Avg
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -9,7 +8,6 @@ from datetime import timezone
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
-    
     class Meta:
         model = CustomUser
         fields = (
@@ -21,21 +19,34 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'role',
         )
 
-class UserCreateSerializer(serializers.Serializer):
-    username = serializers.CharField()
-    email = serializers.EmailField(
-        validators=[
-            validators.UniqueValidator(queryset=CustomUser.objects.all()),
-            MaxLengthValidator(254),
-        ]
-    )
 
-    def create(self, validated_data):
-        user = CustomUser.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email']
-        )
-        return user
+class SignUpSerializer(serializers.Serializer):
+    username = serializers.SlugField(max_length=150)
+    email = serializers.EmailField(max_length=254)
+    
+    class Meta:
+        model = CustomUser
+        fields = ('username', 'email')
+
+    def validate(self, data):
+        if data['username'] == 'me':
+            raise serializers.ValidationError(
+                'Это имя уже занято'
+            )
+        if data['email'] == data['username']:
+            raise serializers.ValidationError(
+                'Поля не должны совпадать'
+            )
+        if CustomUser.objects.filter(email=data['email']):
+            raise serializers.ValidationError(
+                'Эта почта занята'
+            )
+        if (CustomUser.objects.filter(username=data['username'])
+            and not CustomUser.objects.filter(email=data['email'])):
+            raise serializers.ValidationError(
+                'Пользователь зарегистрирован с другой почтой'
+            )
+        return data
 
 
 class YearValidator:
@@ -73,7 +84,6 @@ class TitleSerializer(serializers.ModelSerializer):
             current_genre, status = Genre.objects.get_or_create(**genre)
             GenreTitle.objects.create(genre=current_genre, title=title)
         return title
-
 
 class CommentSerializer(serializers.ModelSerializer):
     # author = SlugRelatedField(read_only=True, slug_field='username')
@@ -120,13 +130,10 @@ class TokenObtainPairByEmailSerializer(TokenObtainPairSerializer):
             raise serializers.ValidationError('Email и код подтверждения обязательны')
         return data
 
-    def get_token(cls, user):
-        token = super().get_token(user)
-        token['email'] = user.email
-        return token
-
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
         token['email'] = user.email
         return token
+    
+

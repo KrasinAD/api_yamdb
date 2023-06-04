@@ -1,3 +1,5 @@
+import os
+
 from pathlib import Path
 
 
@@ -119,4 +121,7 @@ REST_FRAMEWORK = {
 #     'AUTH_HEADER_TYPES': ('Bearer',),
 # }
 
-AUTH_USER_MODEL = 'review.CustomUser'
+AUTH_USER_MODEL = 'review.User'
+
+EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')

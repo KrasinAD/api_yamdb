@@ -2,12 +2,25 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 
-CHOICES_ROLE = (
+ROLE = (
     ('User', 'Пользователь'),
     ('Moderator', 'Модератор'),
     ('Admin', 'Администратор'),
 )
 
-class CustomUser(AbstractUser):
-    bio = models.TextField(max_length=500, blank=True)
-    role = models.CharField(max_length=16, choices=CHOICES_ROLE)
+class User(AbstractUser):
+
+    email = models.EmailField(unique=True)
+
+    bio = models.TextField(
+        'Биография',
+        max_length=500,
+        blank=True
+    )
+
+    role = models.CharField(
+        'Тип пользователя',
+        max_length=16,
+        choices=ROLE,
+        default='user'
+    )

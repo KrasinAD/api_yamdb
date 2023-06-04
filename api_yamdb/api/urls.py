@@ -8,14 +8,14 @@ from api.views import UserViewSet, UserAccessViewSet, UserCreateViewSet
 app_name = 'api_yamdb'
 
 router = DefaultRouter()
-router.register(r'auth/signup/', UserCreateViewSet, basename='signup')
-router.register(r'auth/token/', UserAccessViewSet, basename='token')
+# router.register(r'auth/signup/', UserCreateViewSet, basename='signup')
+# router.register(r'auth/token/', UserAccessViewSet, basename='token')
 router.register(r'users', UserViewSet, basename='users')
 
 urlpatterns = [
     path('v1/', include(router.urls)),
-    # path('v1/auth/signup/', UserCreatViewSet, name='signup'),
-    # path('v1/auth/token/', TokenObtainPairView.as_view(), name='token'),
+    path('v1/auth/signup/', UserCreateViewSet.as_view({'post': 'create'}), name='signup'),
+    path('v1/auth/token/', UserAccessViewSet.as_view({'post': 'create'}), name='token'),
     # path('v1/auth/signup/', include('djoser.urls')),
     # path('v1/', include('djoser.urls.jwt')),
 ]

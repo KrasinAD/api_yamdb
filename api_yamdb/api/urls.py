@@ -1,3 +1,4 @@
+from rest_framework_simplejwt.views import TokenObtainPairView
 from django.urls import include, path
 from django import views
 from rest_framework.routers import DefaultRouter
@@ -32,6 +33,6 @@ router_v1.register(
 )
 
 urlpatterns = [
-    path('v1/api-token-auth/', views.obtain_auth_token),
+    path('v1/auth/signup/', views.obtain_auth_token, name='signup'),
     path('v1/', include(router_v1.urls)),
 ]

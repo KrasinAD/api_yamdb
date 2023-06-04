@@ -1,16 +1,13 @@
-# from django.shortcuts import get_object_or_404
+from django.core.mail import send_mail
+
 from rest_framework import viewsets
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 from .permissions import IsAuthorOrReadOnly
 from .serializers import CommentSerializer, CategorySerializer, GenreSerializer, ReviewSerializer, TitleSerializer 
-from reviews.models import Category, Genre, Title, Review
-
-
-from .permissions import IsAuthorOrReadOnly
-from .serializers import CommentSerializer, ReviewSerializer
 from reviews.models import Category, Genre, Title, Review
 
 
@@ -71,3 +68,27 @@ class CommentViewSet(viewsets.ModelViewSet):
         review = Review.objects.select_related('comments').filter(
             title=title_id).get(pk=review_id)
         serializer.save(author=self.request.user, review=review)
+
+
+
+
+class ConfirmEmailViewSet(viewsets.ViewSet):
+    def create(self, request):
+        email = request.data.get('email')
+        if email:
+            # Генерация случайного кода подтверждения
+            confirmation_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            # Отправка кода по электронной почте
+            send_mail(
+                'Код подтверждения',
+                f'Ваш код подтверждения: {confirmation_code}',
+                'from@example.com',
+                [email],
+                fail_silently=False
+            )
+            # Возвращаем сообщение об успешной отправке
+            return Response({'message': 'Код подтверждения отправлен'})
+        else:
+            # Возвращаем сообщение об ошибке, если email не указан
+            return Response({'message': 'Не указан email'}, status=400)
+

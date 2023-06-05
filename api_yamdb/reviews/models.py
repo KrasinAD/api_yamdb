@@ -2,30 +2,25 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-CHOICES_ROLES = (
+ROLES = (
     ('user', 'User'),
     ('moderator', 'Moderator'),
     ('admin', 'Admin'),
 )
 
 
-class CustomUser(AbstractUser):
+class User(AbstractUser):
     bio = models.TextField(blank=True)
     role = models.CharField(max_length=20,
-                            choices=CHOICES_ROLES,
+                            choices=ROLES,
                             default='user')
     email = models.EmailField(unique=True)
 
     USERNAME_FIELD = 'username'
     EMAIL_FIELD = ['email']
 
-    @property
-    def is_staff(self):
-        return self.role == 'admin'
-
-    @property
-    def is_moderator(self):
-        return self.role == 'moderator'
+    def __str__(self):
+        return self.username[:50]
 
 
 class Category(models.Model):
@@ -71,7 +66,6 @@ class GenreTitle(models.Model):
 
 class Review(models.Model):
     text = models.TextField()
-    author = models.IntegerField()
     score = models.PositiveSmallIntegerField(
         default=None,
         validators=(MaxValueValidator(10), MinValueValidator(1))
@@ -81,10 +75,9 @@ class Review(models.Model):
                               on_delete=models.CASCADE,
                               related_name='reviews'
                               )
-    author = models.ForeignKey(CustomUser,
+    author = models.ForeignKey(User,
                                on_delete=models.CASCADE,
-                               related_name='reviews'
-                               )
+                               related_name='reviews')
 
     def __str__(self):
         return self.text
@@ -95,41 +88,10 @@ class Comment(models.Model):
                                on_delete=models.CASCADE,
                                related_name='comments')
     pub_date = models.DateTimeField(auto_now_add=True)
-    author = models.IntegerField()
     text = models.TextField()
-    author = models.ForeignKey(CustomUser,
+    author = models.ForeignKey(User,
                                on_delete=models.CASCADE,
-                               related_name='comments'
-                               )
+                               related_name='comments')
 
     def __str__(self):
         return self.text
-from django.db import models
-from django.contrib.auth.models import AbstractUser
-
-
-ROLE = (
-    ('User', 'Пользователь'),
-    ('Moderator', 'Модератор'),
-    ('Admin', 'Администратор'),
-)
-
-class User(AbstractUser):
-    email = models.EmailField(unique=True)
-    bio = models.TextField(
-        'Биография',
-        max_length=500,
-        blank=True
-    )
-    role = models.CharField(
-        'Тип пользователя',
-        max_length=16,
-        choices=ROLE,
-        default='User'
-    )
-
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
-
-    def __str__(self):
-        return self.username[:50]

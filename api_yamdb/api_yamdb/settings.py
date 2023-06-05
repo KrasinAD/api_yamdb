@@ -24,7 +24,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
-    'django_filters',
     'reviews.apps.ReviewsConfig',
     'api.apps.ApiConfig',
 ]
@@ -117,12 +116,11 @@ REST_FRAMEWORK = {
     ],
 }
 
-# SIMPLE_JWT = {
-#     'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
-#     'AUTH_HEADER_TYPES': ('Bearer',),
-# }
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
-AUTH_USER_MODEL = 'reviews.User'
 
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')

@@ -1,10 +1,11 @@
 from django.contrib.auth.tokens import default_token_generator
 from rest_framework import mixins, status, viewsets 
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework.pagination import PageNumberPagination
 
 from .serializers import (UserCreateSerializer, UserSerializer,
                           UserTokenSerializer)
@@ -55,7 +56,8 @@ class UserViewSet(viewsets.ModelViewSet):
     """Вьюсет для взаимодействия с пользователем."""
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    # permission_classes = (IsAdminUser,)
+    permission_classes = (IsAuthenticated,)
+    pagination_class = PageNumberPagination
 
     # def perform_create(self, serializer):
     #     serializer.save(username=self.request.user)

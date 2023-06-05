@@ -1,70 +1,27 @@
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
-from django.conf import settings
-from django.db import models
+from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
-from rest_framework_simplejwt.tokens import RefreshToken
+from django.db import models
 
-CHOICES_ROLES = [
+ROLES = (
     ('user', 'User'),
     ('moderator', 'Moderator'),
     ('admin', 'Admin'),
-]
+)
 
 
-class CustomUserManager(BaseUserManager):
-    def create_user(self, username, email, password=None):
-        if not email:
-            raise ValueError('У пользователя email - musthave')
-        
-        user = self.model(
-            username=username,
-            email=self.normalize_email(email),
-        )
-
-        if password:
-            user.set_password(password)
-
-        user.save()
-        return user
-    
-    def create_superuser(self, username, email, password):
-        user = self.create_user(
-            username=username,
-            email=email,
-            password=password,
-        )
-        user.is_superuser = True
-        user.save()
-        return user
-
-class CustomUser(AbstractBaseUser):
+class User(AbstractUser):
     bio = models.TextField(blank=True)
     role = models.CharField(max_length=20,
-                            choices=CHOICES_ROLES,
-                            default='user'
-                            )
+                            choices=ROLES,
+                            default='user')
+    email = models.EmailField(unique=True)
 
     USERNAME_FIELD = 'username'
-    EMAIL_FIELD = ['email']
-
-    objects = CustomUserManager()
+    EMAIL_FIELD = 'email'
+    
 
     def __str__(self):
-        return self.username
-    
-    def has_perm(self, perm, obj=None):
-        return True
-    
-    @property
-    def is_staff(self):
-        return self.role == 'admin'
-    
-    def get_tokens(self):
-        refresh = RefreshToken.for_user(self)
-        return {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token)
-        }
+        return self.username[:50]
 
 
 class Category(models.Model):
@@ -90,6 +47,7 @@ class Title(models.Model):
     year = models.IntegerField()
     category = models.ForeignKey(
         Category,
+        null=True,
         on_delete=models.SET_NULL,
         related_name='titles'
     )
@@ -98,9 +56,10 @@ class Title(models.Model):
         through='GenreTitle',
         related_name='genres'
     )
-    
+
     def __str__(self):
-        return self.description
+        return self.name
+
 
 class GenreTitle(models.Model):
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
@@ -109,7 +68,6 @@ class GenreTitle(models.Model):
 
 class Review(models.Model):
     text = models.TextField()
-    author = models.IntegerField()
     score = models.PositiveSmallIntegerField(
         default=None,
         validators=(MaxValueValidator(10), MinValueValidator(1))
@@ -119,10 +77,9 @@ class Review(models.Model):
                               on_delete=models.CASCADE,
                               related_name='reviews'
                               )
-    author = models.ForeignKey(settings.AUTH_USER_MODEL,
+    author = models.ForeignKey(User,
                                on_delete=models.CASCADE,
-                               related_name='reviews'
-                               )
+                               related_name='reviews')
 
     def __str__(self):
         return self.text
@@ -131,15 +88,12 @@ class Review(models.Model):
 class Comment(models.Model):
     review = models.ForeignKey(Review,
                                on_delete=models.CASCADE,
-                               related_name='comments'
-                               )
+                               related_name='comments')
     pub_date = models.DateTimeField(auto_now_add=True)
-    author = models.IntegerField()
     text = models.TextField()
-    author = models.ForeignKey(settings.AUTH_USER_MODEL,
+    author = models.ForeignKey(User,
                                on_delete=models.CASCADE,
-                               related_name='comments'
-                               )
+                               related_name='comments')
 
     def __str__(self):
         return self.text

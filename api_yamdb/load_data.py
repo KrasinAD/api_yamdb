@@ -2,13 +2,13 @@ import sqlite3
 import csv
 import os
 
-db_path = '/db.sqlite3'
-csv_folder = 'csv_folder/'
+db_path = 'db.sqlite3'
+csv_folder = 'csv_folder'
 conn = sqlite3.connect(db_path)
 
 for csv_file in os.listdir(csv_folder):
     if csv_file.endswith('.csv'):
-        with open(os.path.join(csv_folder, csv_file), 'r') as f:
+        with open(os.path.join(csv_folder, csv_file), 'r', encoding='utf-8') as f:
             reader = csv.reader(f)
             headers = next(reader)
             rows = [tuple(row) for row in reader]
@@ -18,5 +18,6 @@ for csv_file in os.listdir(csv_folder):
         c.executemany(f'INSERT INTO {table_name} VALUES ({", ".join(["?" for _ in headers])})', rows)
         conn.commit()
         c.close()
+        print(f'Всё успешно для {csv_file}')
 conn.close()
 # для вызова написать python load_data.py в директории api_yamdb

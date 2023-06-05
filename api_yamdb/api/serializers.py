@@ -38,28 +38,19 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 class UserTokenSerializer(serializers.Serializer):
 
-    username = serializers.SlugField(
-        max_length=150,
-    ),
-
-    # username = serializers.RegexField(
-    #     regex=r'^[\w.@+-]+$',
+    # username = serializers.SlugField(
     #     max_length=150,
-    #  )    required=True
+    # ),
 
+    username = serializers.RegexField(
+        regex=r'^[\w.@+-]+$',
+        max_length=150,
+        required=True
+    )
     confirmation_code = serializers.CharField(
         max_length=150,
         required=True
     )
-
-
-class UserSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = User
-        fields = (
-            'username', 'email', 'first_name', 'last_name', 'bio', 'role'
-        )
 
 
 class GenreSerializer(serializers.ModelSerializer):

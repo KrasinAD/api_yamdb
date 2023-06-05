@@ -119,21 +119,25 @@ class UserTokenViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return Response(message, status=status.HTTP_200_OK)
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(mixins.ListModelMixin,
+                  mixins.CreateModelMixin,
+                  viewsets.GenericViewSet):
     """Вьюсет для взаимодействия с пользователем."""
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = (IsAdmin,)
+    filter_backends = (SearchFilter,)
+    search_fields = ('username',)
 
-    @action(methods=['GET', 'PATCH'],
-            detail=False,
-            url_path='me',
-            permission_classes=(permissions.IsAuthenticated,))
+    @action(
+        methods=['get', 'patch'],
+        detail=False,
+        permission_classes=(permissions.IsAuthenticated,)
+    )
     def me(self, request):
-        user = request.user
         if request.method == 'PATCH':
             serializer = UserSerializer(
-                user,
+                request.user,
                 data=request.data,
                 partial=True
             )
@@ -142,8 +146,27 @@ class UserViewSet(viewsets.ModelViewSet):
                 return Response(serializer.data, status=status.HTTP_200_OK)
             return Response(serializer.errors,
                             status=status.HTTP_405_METHOD_NOT_ALLOWED)
-        serializer = UserSerializer
+        serializer = UserSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(
+        detail=False,
+        methods=['get', 'patch', 'delete'],
+        url_path=r'(?P<username>[\w.@+-]+)',
+    )
+    def username(self, request, username):
+        user = get_object_or_404(User, username=username)
+        if request.method == 'PATCH':
+            serializer = UserSerializer(user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        elif request.method == 'DELETE':
+            user.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 # class CustomUserViewSet(viewsets.ModelViewSet):

@@ -1,7 +1,6 @@
 import os
-
+from datetime import timedelta
 from pathlib import Path
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -13,7 +12,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-
+DATETIME_INPUT_FORMATS = ("%Y-%m-%dT%H:%M:%S%Z",)
 # Application definition
 
 INSTALLED_APPS = [
@@ -24,8 +23,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'api',
-    'reviews',
+    'rest_framework_simplejwt',
+    'django_filters',
+    'reviews.apps.ReviewsConfig',
+    'api.apps.ApiConfig',
 ]
 
 MIDDLEWARE = [

@@ -46,6 +46,7 @@ class Title(models.Model):
     year = models.IntegerField()
     category = models.ForeignKey(
         Category,
+        null=True,
         on_delete=models.SET_NULL,
         related_name='titles'
     )

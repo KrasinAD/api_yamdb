@@ -1,16 +1,13 @@
 from rest_framework import serializers, validators
 # from rest_framework.relations import SlugRelatedField
 from django.db.models import Avg
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from reviews.models import Category, Comment, Genre, GenreTitle, Review, Title, CustomUser
 from datetime import timezone
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(
-        validators=[validators.UniqueValidator(queryset=CustomUser.objects.all())]
-    )
-
     class Meta:
         model = CustomUser
         fields = (
@@ -22,12 +19,34 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'role',
         )
 
-    def validate_email(self, value):
-        if len(value) > 254:
+
+class SignUpSerializer(serializers.Serializer):
+    username = serializers.SlugField(max_length=150)
+    email = serializers.EmailField(max_length=254)
+    
+    class Meta:
+        model = CustomUser
+        fields = ('username', 'email')
+
+    def validate(self, data):
+        if data['username'] == 'me':
             raise serializers.ValidationError(
-                'Поле Email не должно быть больше 254 символов'
-                )
-        return value
+                'Это имя уже занято'
+            )
+        if data['email'] == data['username']:
+            raise serializers.ValidationError(
+                'Поля не должны совпадать'
+            )
+        if CustomUser.objects.filter(email=data['email']):
+            raise serializers.ValidationError(
+                'Эта почта занята'
+            )
+        if (CustomUser.objects.filter(username=data['username'])
+            and not CustomUser.objects.filter(email=data['email'])):
+            raise serializers.ValidationError(
+                'Пользователь зарегистрирован с другой почтой'
+            )
+        return data
 
 
 class YearValidator:
@@ -66,7 +85,6 @@ class TitleSerializer(serializers.ModelSerializer):
             GenreTitle.objects.create(genre=current_genre, title=title)
         return title
 
-
 class CommentSerializer(serializers.ModelSerializer):
     # author = SlugRelatedField(read_only=True, slug_field='username')
 
@@ -88,3 +106,34 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         fields = ('slug', 'name')
         model = Category
+
+
+class TokenObtainPairByEmailSerializer(TokenObtainPairSerializer):
+    email = serializers.EmailField()
+    confirmation_code = serializers.CharField()
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        email = attrs.get('email')
+        confirmation_code = attrs.get('confirmation_code')
+
+        if email and confirmation_code:
+            try:
+                user = CustomUser.objects.get(email=email)
+            except CustomUser.DoesNotExist:
+                raise serializers.ValidationError('Неверный email или код подтверждения')
+            
+            if not user.check_confirmation_code(confirmation_code):
+                raise serializers.ValidationError('Неверный email или код подтверждения')
+            data['user'] = user
+        else:
+            raise serializers.ValidationError('Email и код подтверждения обязательны')
+        return data
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['email'] = user.email
+        return token
+    
+

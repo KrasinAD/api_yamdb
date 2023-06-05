@@ -2,8 +2,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from django.urls import include, path
 from django import views
 from rest_framework.routers import DefaultRouter
+from rest_framework.authtoken.views import obtain_auth_token
 
-from .views import CategoryViewSet, CommentViewSet, GenreViewSet, ReviewViewSet, TitleViewSet
+from .views import CategoryViewSet, CommentViewSet, GenreViewSet, ReviewViewSet, SignupView, TitleViewSet, TokenObtainPairByEmailView
+
+app_name = 'api'
 
 router_v1 = DefaultRouter()
 router_v1.register(
@@ -33,6 +36,8 @@ router_v1.register(
 )
 
 urlpatterns = [
-    path('v1/auth/signup/', views.obtain_auth_token, name='signup'),
+    path('api/v1/auth/signup/', views.SignupView.as_view(), name="signup"),
+    path('api/v1/auth/token/', TokenObtainPairByEmailView),
+    path('v1/api-token-auth/', obtain_auth_token),
     path('v1/', include(router_v1.urls)),
 ]

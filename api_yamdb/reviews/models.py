@@ -1,8 +1,6 @@
 from django.contrib.auth.models import AbstractUser
-from django.conf import settings
-from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
-from rest_framework_simplejwt.tokens import RefreshToken
+from django.db import models
 
 CHOICES_ROLES = (
     ('user', 'User'),
@@ -15,21 +13,30 @@ class CustomUser(AbstractUser):
     bio = models.TextField(blank=True)
     role = models.CharField(max_length=20,
                             choices=CHOICES_ROLES,
-                            default='user'
-                            )
+                            default='user')
+    email = models.EmailField(unique=True)
+
+    USERNAME_FIELD = 'username'
+    EMAIL_FIELD = ['email']
 
     @property
     def is_staff(self):
         return self.role == 'admin'
-    
-    def get_tokens(self):
-        refresh = RefreshToken.for_user(self)
-        return {
-            'access': str(refresh.access_token)
-        }
+
+    @property
+    def is_moderator(self):
+        return self.role == 'moderator'
 
 
 class Category(models.Model):
+    slug = models.SlugField(max_length=50, unique=True)
+    name = models.CharField(max_length=256)
+
+    def __str__(self):
+        return self.name
+
+
+class Genre(models.Model):
     slug = models.SlugField(max_length=50, unique=True)
     name = models.CharField(max_length=256)
 
@@ -42,22 +49,16 @@ class Title(models.Model):
     description = models.TextField(blank=True, null=True)
     rating = models.IntegerField(blank=True, null=True, default=None)
     year = models.IntegerField()
-    category = models.ForeignKey(Category,
-                                 on_delete=models.SET_NULL,
-                                 related_name='titles'
-                                 )
-
-    def __str__(self):
-        return self.description
-
-
-class Genre(models.Model):
-    slug = models.SlugField(max_length=50, unique=True)
-    name = models.CharField(max_length=256)
-    titles = models.ManyToManyField(Title,
-                                    through='GenreTitle',
-                                    related_name='genres'
-                                    )
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        related_name='titles'
+    )
+    genre = models.ManyToManyField(
+        Genre,
+        through='GenreTitle',
+        related_name='genres'
+    )
 
     def __str__(self):
         return self.name
@@ -80,7 +81,7 @@ class Review(models.Model):
                               on_delete=models.CASCADE,
                               related_name='reviews'
                               )
-    author = models.ForeignKey(settings.AUTH_USER_MODEL,
+    author = models.ForeignKey(CustomUser,
                                on_delete=models.CASCADE,
                                related_name='reviews'
                                )
@@ -96,7 +97,7 @@ class Comment(models.Model):
     pub_date = models.DateTimeField(auto_now_add=True)
     author = models.IntegerField()
     text = models.TextField()
-    author = models.ForeignKey(settings.AUTH_USER_MODEL,
+    author = models.ForeignKey(CustomUser,
                                on_delete=models.CASCADE,
                                related_name='comments'
                                )

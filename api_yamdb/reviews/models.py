@@ -10,11 +10,18 @@ ROLES = (
 
 
 class User(AbstractUser):
-    bio = models.TextField(blank=True)
-    role = models.CharField(max_length=20,
-                            choices=ROLES,
-                            default='user')
     email = models.EmailField(unique=True)
+    bio = models.TextField(
+        'Биография',
+        max_length=500,
+        blank=True
+    )
+    role = models.CharField(
+        'Тип пользователя',
+        max_length=20,
+        choices=ROLES,
+        default='user'
+    )
 
     USERNAME_FIELD = 'username'
     EMAIL_FIELD = 'email'
@@ -69,7 +76,8 @@ class Review(models.Model):
     text = models.TextField()
     score = models.PositiveSmallIntegerField(
         default=None,
-        validators=(MaxValueValidator(10), MinValueValidator(1))
+        validators=(MaxValueValidator(10, 'Оценка может быть от 1 до 10!'),
+                    MinValueValidator(1, 'Оценка может быть от 1 до 10!'))
     )
     pub_date = models.DateTimeField(auto_now_add=True)
     title = models.ForeignKey(Title,

@@ -5,9 +5,9 @@ from rest_framework.response import Response
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import AccessToken
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
+from django.db import IntegrityError
 
 from .permissions import IsAdmin
 from .serializers import (UserCreateSerializer, UserSerializer,
@@ -20,11 +20,22 @@ class UserCreateViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     queryset = User.objects.all()
     serializer_class = UserCreateSerializer
     permission_classes = (AllowAny,)
-
+    
     def create(self, request):
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user, _ = User.objects.get_or_create(**serializer.validated_data)
+        email = serializer.validated_data.get('email')
+        username = serializer.validated_data['username']
+        try: 
+            user, _ = User.objects.get_or_create(
+                email=email,
+                username=username
+            ) 
+        except IntegrityError: 
+            return Response( 
+            'username или email уже заняты',
+            status=status.HTTP_400_BAD_REQUEST 
+        ) 
         confirmation_code = default_token_generator.make_token(user)
         send_mail(
             'Подтверждение регистрации.',
@@ -55,37 +66,102 @@ class UserTokenViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         message = {'token': str(AccessToken.for_user(user))}
         return Response(message, status=status.HTTP_200_OK)
 
-class UserViewSet(viewsets.ModelViewSet):
+
+class UserViewSet(mixins.ListModelMixin,
+                  mixins.CreateModelMixin,
+                  viewsets.GenericViewSet):
     """Вьюсет для взаимодействия с пользователем."""
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = (IsAdmin,)
-    pagination_class = LimitOffsetPagination
     filter_backends = (SearchFilter,)
     search_fields = ('username',)
-    lookup_field = 'username'
-    http_method_names = ('get', 'post', 'patch', 'delete')
 
-    @action(methods=['GET', 'PATCH'],
-            detail=False,
-            url_path='me',
-            permission_classes=(IsAuthenticated,))
+    @action(
+        methods=['get', 'patch'],
+        detail=False,
+        permission_classes=(IsAuthenticated,)
+    )
     def me(self, request):
-        user = request.user
-        if request.method == 'GET':
-            serializer = self.get_serializer(user)
-            return Response(serializer.data, status=status.HTTP_200_OK)
         if request.method == 'PATCH':
             serializer = UserSerializer(
-                user,
+                request.user,
                 data=request.data,
                 partial=True
             )
             if serializer.is_valid(raise_exception=True):
                 serializer.save(role='user')
                 return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors,
+            return Response(serializer.errors,
                             status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(
+        detail=False,
+        methods=['get', 'patch', 'delete'],
+        url_path=r'(?P<username>[\w.@+-]+)',
+    )
+    def username(self, request, username):
+        user = get_object_or_404(User, username=username)
+        if request.method == 'PATCH':
+            serializer = UserSerializer(user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        elif request.method == 'DELETE':
+            user.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(
+        detail=False,
+        methods=['get', 'patch', 'delete'],
+        url_path=r'(?P<username>[\w.@+-]+)',
+    )
+    def username(self, request, username):
+        user = get_object_or_404(User, username=username)
+        if request.method == 'PATCH':
+            serializer = UserSerializer(user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        elif request.method == 'DELETE':
+            user.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 
+# class UserViewSet(viewsets.ModelViewSet):
+#     """Вьюсет для взаимодействия с пользователем."""
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+#     permission_classes = (IsAdmin,)
+#     pagination_class = LimitOffsetPagination
+#     filter_backends = (SearchFilter,)
+#     search_fields = ('username',)
+#     lookup_field = 'username'
+#     http_method_names = ('get', 'post', 'patch', 'delete')
 
+#     @action(methods=['GET', 'PATCH'],
+#             detail=False,
+#             url_path='me',
+#             permission_classes=(IsAuthenticated,))
+#     def me(self, request):
+#         user = request.user
+#         if request.method == 'GET':
+#             serializer = self.get_serializer(user)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         if request.method == 'PATCH':
+#             serializer = UserSerializer(
+#                 user,
+#                 data=request.data,
+#                 partial=True
+#             )
+#             if serializer.is_valid(raise_exception=True):
+#                 serializer.save(role='user')
+#                 return Response(serializer.data, status=status.HTTP_200_OK)
+#         return Response(serializer.errors,
+#                             status=status.HTTP_405_METHOD_NOT_ALLOWED)

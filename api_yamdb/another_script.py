@@ -4,7 +4,11 @@ from django.conf import settings
 from django.core.management import BaseCommand
 
 from reviews.models import (
+<<<<<<< HEAD
     Category, Comment, Genre, Review, Title, User, GenreTitle
+=======
+    Category, Comment, Genre, Review, Title, User
+>>>>>>> categories/genres/titles
 )
 
 
@@ -15,7 +19,10 @@ ModeltoFile = {
     Review: 'review.csv',
     Title: 'titles.csv',
     User: 'users.csv',
+<<<<<<< HEAD
     GenreTitle: 'genre_title.csv',
+=======
+>>>>>>> categories/genres/titles
 }
 
 

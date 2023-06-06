@@ -17,7 +17,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
 
     USERNAME_FIELD = 'username'
-    EMAIL_FIELD = ['email']
+    EMAIL_FIELD = 'email'
 
     def __str__(self):
         return self.username[:50]

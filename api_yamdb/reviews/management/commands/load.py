@@ -31,7 +31,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         for model, base in ModeltoFile.items():
             with open(
-                f'{settings.BASE_DIR}/static/csv_folder/{base}',
+                f'{settings.BASE_DIR}/static/data/{base}',
                 'r', encoding='utf-8'
             ) as csv_file:
                 reader = csv.DictReader(csv_file)

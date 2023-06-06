@@ -8,6 +8,8 @@ from rest_framework.filters import SearchFilter
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import TitlesFilter
 
 from .permissions import (IsAdmin, IsAdminOrReadOnly,
                           IsAuthorModerAdminOrReadOnly)
@@ -20,7 +22,14 @@ from .serializers import (CategorySerializer,
                           UserSerializer,
                           UserTokenSerializer,
                           ReadOnlyTitleSerializer)
-from reviews.models import Category, Genre, Review, Title, User
+from reviews.models import Category, Genre, Review, Title, User, Comment
+
+
+# class TitleViewSet(viewsets.ModelViewSet):
+#     queryset = Title.objects.all()
+#     serializer_class = TitleSerializer
+#     permission_classes = (IsAdminOrReadOnly,)
+#     pagination_class = LimitOffsetPagination
 
 
 # class TitleViewSet(viewsets.ModelViewSet):
@@ -34,6 +43,8 @@ class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = TitlesFilter
 
     def get_serializer_class(self):
         if self.action in ("retrieve", "list"):
@@ -83,27 +94,25 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         title_id = self.kwargs.get('title_id')
-        title = Review.objects.get(pk=title_id)
+        try:
+            title = Title.objects.get(pk=title_id)
+        except Title.DoesNotExist:
+            # Если объект Title не существует, создаем его
+            title = Title.objects.create(pk=title_id)
         serializer.save(author=self.request.user, title=title)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
-    permission_classes = (IsAuthorModerAdminOrReadOnly,)
+    permission_classes = [IsAuthorModerAdminOrReadOnly]
 
     def get_queryset(self):
-        title_id = self.kwargs.get('title_id')
-        review_id = self.kwargs.get('review_id')
-        review = Review.objects.select_related('comments').filter(
-            title=title_id).get(pk=review_id)
-        return review.comments.all()
+        title_id = self.kwargs['title_id']
+        review_id = self.kwargs['review_id']
+        return Comment.objects.filter(review__title_id=title_id, review_id=review_id).select_related('author', 'review')
 
     def perform_create(self, serializer):
-        title_id = self.kwargs.get('title_id')
-        review_id = self.kwargs.get('review_id')
-        review = Review.objects.select_related('comments').filter(
-            title=title_id).get(pk=review_id)
-        serializer.save(author=self.request.user, review=review)
+        serializer.save(author=self.request.user, review_id=self.kwargs['review_id'])
 
 
 class UserCreateViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):

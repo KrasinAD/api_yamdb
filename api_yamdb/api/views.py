@@ -5,8 +5,11 @@ from rest_framework.response import Response
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import AccessToken
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.decorators import action
+from rest_framework.filters import SearchFilter
 
+from .permissions import IsAdmin
 from .serializers import (UserCreateSerializer, UserSerializer,
                           UserTokenSerializer)
 from reviews.models import User
@@ -56,12 +59,33 @@ class UserViewSet(viewsets.ModelViewSet):
     """Вьюсет для взаимодействия с пользователем."""
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = (IsAuthenticated,)
-    pagination_class = PageNumberPagination
+    permission_classes = (IsAdmin,)
+    pagination_class = LimitOffsetPagination
+    filter_backends = (SearchFilter,)
+    search_fields = ('username',)
+    lookup_field = 'username'
+    http_method_names = ('get', 'post', 'patch', 'delete')
 
-    # def perform_create(self, serializer):
-    #     serializer.save(username=self.request.user)
-
+    @action(methods=['GET', 'PATCH'],
+            detail=False,
+            url_path='me',
+            permission_classes=(IsAuthenticated,))
+    def me(self, request):
+        user = request.user
+        if request.method == 'GET':
+            serializer = self.get_serializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        if request.method == 'PATCH':
+            serializer = UserSerializer(
+                user,
+                data=request.data,
+                partial=True
+            )
+            if serializer.is_valid(raise_exception=True):
+                serializer.save(role='user')
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors,
+                            status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 

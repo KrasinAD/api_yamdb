@@ -93,7 +93,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
 
 class UserCreate(generics.CreateAPIView):
-    """Вьюсет для создания пользователя User."""
+    """Класс для создания пользователя User."""
     queryset = User.objects.all()
     serializer_class = UserCreateSerializer
     permission_classes = (permissions.AllowAny,)
@@ -123,7 +123,6 @@ class UserCreate(generics.CreateAPIView):
 
 
 class UserToken(generics.CreateAPIView):
-    """Вьюсет для обработки JWT-токена."""
     queryset = User.objects.all()
     serializer_class = UserTokenSerializer
     permission_classes = (permissions.AllowAny,)
@@ -144,7 +143,6 @@ class UserToken(generics.CreateAPIView):
 class UserViewSet(mixins.ListModelMixin,
                   mixins.CreateModelMixin,
                   viewsets.GenericViewSet):
-    """Вьюсет для взаимодействия с пользователем."""
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = (IsAdmin,)
@@ -169,24 +167,6 @@ class UserViewSet(mixins.ListModelMixin,
             return Response(serializer.errors,
                             status=status.HTTP_405_METHOD_NOT_ALLOWED)
         serializer = UserSerializer(request.user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    @action(
-        detail=False,
-        methods=['get', 'patch', 'delete'],
-        url_path=r'(?P<username>[\w.@+-]+)',
-    )
-    def username(self, request, username):
-        user = get_object_or_404(User, username=username)
-        if request.method == 'PATCH':
-            serializer = UserSerializer(user, data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        if request.method == 'DELETE':
-            user.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        serializer = UserSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(

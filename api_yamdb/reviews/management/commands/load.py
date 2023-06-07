@@ -1,40 +1,48 @@
 import csv
 
-from django.conf import settings
-from django.core.management import BaseCommand
+from django.core.management.base import BaseCommand
 
-from reviews.models import (
-<<<<<<< HEAD
-    Category, Comment, Genre, Review, Title, User, GenreTitle
-=======
-    Category, Comment, Genre, Review, Title, User
->>>>>>> categories/genres/titles
-)
+from reviews.models import (Category, Comment, Genre,
+                            GenreTitle, Review, Title, User)
 
+CSV_PATH = 'static/data/'
+FOREIGN_KEY_FIELDS = ('category', 'author')
 
-ModeltoFile = {
-    Category: 'category.csv',
-    Comment: 'comments.csv',
-    Genre: 'genre.csv',
-    Review: 'review.csv',
-    Title: 'titles.csv',
+DICT = {
     User: 'users.csv',
-<<<<<<< HEAD
-    GenreTitle: 'genre_title.csv',
-=======
->>>>>>> categories/genres/titles
+    Genre: 'genre.csv',
+    Category: 'category.csv',
+    Title: 'titles.csv',
+    Review: 'review.csv',
+    Comment: 'comments.csv',
+    GenreTitle: 'genre_title.csv'
 }
 
 
+def csv_import(csv_data, model):
+    objects = []
+    for row in csv_data:
+        for field in FOREIGN_KEY_FIELDS:
+            if field in row:
+                row[f'{field}_id'] = row[field]
+                del row[field]
+        objects.append(model(**row))
+    model.objects.bulk_create(objects)
+
+
 class Command(BaseCommand):
+    help = 'импорт из .csv'
 
     def handle(self, *args, **kwargs):
-        for model, base in ModeltoFile.items():
+        for model in DICT:
             with open(
-                f'{settings.BASE_DIR}/static/data/{base}',
-                'r', encoding='utf-8'
+                CSV_PATH + DICT[model],
+                newline='',
+                encoding='utf8'
             ) as csv_file:
-                reader = csv.DictReader(csv_file)
-                model.objects.bulk_create(model(**data) for data in reader)
-
-        self.stdout.write(self.style.SUCCESS('Данные успешно загружены'))
+                csv_import(csv.DictReader(csv_file), model)
+        self.stdout.write(
+            self.style.SUCCESS(
+                'Загрузка завершена'
+            )
+        )

@@ -11,17 +11,8 @@ ROLES = (
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
-    bio = models.TextField(
-        'Биография',
-        max_length=500,
-        blank=True
-    )
-    role = models.CharField(
-        'Тип пользователя',
-        max_length=20,
-        choices=ROLES,
-        default='user'
-    )
+    bio = models.TextField(max_length=500, blank=True)
+    role = models.CharField(max_length=20, choices=ROLES, default='user')
 
     USERNAME_FIELD = 'username'
     EMAIL_FIELD = 'email'

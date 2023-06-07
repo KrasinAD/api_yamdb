@@ -1,49 +1,38 @@
 
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
-from rest_framework import mixins, permissions, viewsets, status
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
-from django_filters.rest_framework import DjangoFilterBackend
-from .filters import TitlesFilter
 
+from .filters import TitlesFilter
 from .permissions import (IsAdmin, IsAdminOrReadOnly,
                           IsAuthorModerAdminOrReadOnly)
-from .serializers import (CategorySerializer,
-                          CommentSerializer,
-                          GenreSerializer,
-                          ReviewSerializer,
-                          TitleSerializer,
-                          UserCreateSerializer,
-                          UserSerializer,
-                          UserTokenSerializer,
-                          ReadOnlyTitleSerializer)
-from reviews.models import Category, Genre, Review, Title, User, Comment
-
-
-# class TitleViewSet(viewsets.ModelViewSet):
-#     queryset = Title.objects.all()
-#     serializer_class = TitleSerializer
-#     permission_classes = (IsAdminOrReadOnly,)
-#     pagination_class = LimitOffsetPagination
+from .serializers import (CategorySerializer, CommentSerializer,
+                          GenreSerializer, ReadOnlyTitleSerializer,
+                          ReviewSerializer, TitleSerializer,
+                          UserCreateSerializer, UserSerializer,
+                          UserTokenSerializer)
+from reviews.models import Category, Genre, Review, Title, User
 
 
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = (DjangoFilterBackend,)
     filterset_class = TitlesFilter
 
     def get_serializer_class(self):
         if self.action in ("retrieve", "list"):
             return ReadOnlyTitleSerializer
         return TitleSerializer
-
 
 
 class CategoryViewSet(mixins.ListModelMixin,
@@ -57,11 +46,6 @@ class CategoryViewSet(mixins.ListModelMixin,
     pagination_class = LimitOffsetPagination
     permission_classes = (IsAdminOrReadOnly,)
     lookup_field = 'slug'
-
-    # def destroy(self, request, *args, **kwargs):
-    #     instance = self.get_object()
-    #     self.perform_destroy(instance)
-    #     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class GenreViewSet(mixins.ListModelMixin,
@@ -83,15 +67,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         title_id = self.kwargs.get('title_id')
-        return Review.objects.filter(title=title_id)
+        title = get_object_or_404(Title, pk=title_id)
+        return title.reviews.all()
 
     def perform_create(self, serializer):
         title_id = self.kwargs.get('title_id')
-        try:
-            title = Title.objects.get(pk=title_id)
-        except Title.DoesNotExist:
-            # Если объект Title не существует, создаем его
-            title = Title.objects.create(pk=title_id)
+        title = get_object_or_404(Title, pk=title_id)
         serializer.save(author=self.request.user, title=title)
 
 
@@ -100,15 +81,18 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthorModerAdminOrReadOnly]
 
     def get_queryset(self):
-        title_id = self.kwargs['title_id']
-        review_id = self.kwargs['review_id']
-        return Comment.objects.filter(review__title_id=title_id, review_id=review_id).select_related('author', 'review')
+        review_id = self.kwargs.get('review_id')
+        review = get_object_or_404(Review, pk=review_id)
+        return review.comments.all()
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user, review_id=self.kwargs['review_id'])
+        title_id = self.kwargs.get('title_id')
+        review_id = self.kwargs.get('review_id')
+        review = get_object_or_404(Review, pk=review_id, title=title_id)
+        serializer.save(author=self.request.user, review=review)
 
 
-class UserCreateViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
+class UserCreate(generics.CreateAPIView):
     """Вьюсет для создания пользователя User."""
     queryset = User.objects.all()
     serializer_class = UserCreateSerializer
@@ -117,11 +101,20 @@ class UserCreateViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     def create(self, request):
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user, _ = User.objects.get_or_create(**serializer.validated_data)
+        email = serializer.validated_data.get('email')
+        username = serializer.validated_data.get('username')
+        try:
+            user, _ = User.objects.get_or_create(
+                email=email,
+                username=username
+            )
+        except IntegrityError:
+            return Response('username или email уже заняты',
+                            status=status.HTTP_400_BAD_REQUEST)
         confirmation_code = default_token_generator.make_token(user)
         send_mail(
             'Подтверждение регистрации.',
-            f'Направляем код подтверждения: {confirmation_code}',
+            f'Направляем confirmation_code: {confirmation_code}',
             'admin@yamdb.com',
             [user.email],
             fail_silently=False,
@@ -129,7 +122,7 @@ class UserCreateViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class UserTokenViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
+class UserToken(generics.CreateAPIView):
     """Вьюсет для обработки JWT-токена."""
     queryset = User.objects.all()
     serializer_class = UserTokenSerializer
@@ -177,7 +170,7 @@ class UserViewSet(mixins.ListModelMixin,
                             status=status.HTTP_405_METHOD_NOT_ALLOWED)
         serializer = UserSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
     @action(
         detail=False,
         methods=['get', 'patch', 'delete'],
@@ -190,19 +183,26 @@ class UserViewSet(mixins.ListModelMixin,
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-        elif request.method == 'DELETE':
+        if request.method == 'DELETE':
             user.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         serializer = UserSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
-
-# class CustomUserViewSet(viewsets.ModelViewSet):
-#     serializer_class = CustomUserSerializer
-#     queryset = CustomUser.objects.all()
-#     pagination_class = LimitOffsetPagination
-#     permission_classes = (IsAuthenticated,)
-#     filter_backends = (SearchFilter,)
-#     search_fields = ('username',)
-#     lookup_field = 'username'
+    @action(
+        detail=False,
+        methods=['get', 'patch', 'delete'],
+        url_path=r'(?P<username>[\w.@+-]+)',
+    )
+    def username(self, request, username):
+        user = get_object_or_404(User, username=username)
+        if request.method == 'PATCH':
+            serializer = UserSerializer(user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        if request.method == 'DELETE':
+            user.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)

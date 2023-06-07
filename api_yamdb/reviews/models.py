@@ -90,14 +90,14 @@ class Review(models.Model):
 
     def __str__(self):
         return self.text
-    
+
     class Meta:
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
-                fields=['title', 'author'],
-                name='unique_review'
+                fields=('title', 'author'),
+                name='Уникальный отзыв'
             ),
-        ]
+        )
 
 
 class Comment(models.Model):

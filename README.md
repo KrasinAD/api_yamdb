@@ -73,6 +73,7 @@ python manage.py runserver
 ## Примеры запросов и результаты:
 
 **Регистрация нового пользователя**
+
 [POST .../auth/signup/](http://127.0.0.1:8000/api/v1/auth/signup/)
 
 **Запрос:**
@@ -91,6 +92,7 @@ python manage.py runserver
 }
 ```
 **Получение JWT-токена**
+
 [POST .../auth/token/](http://127.0.0.1:8000/api/v1/auth/token/)
 
 **Запрос:**
@@ -107,6 +109,7 @@ python manage.py runserver
 }
 ```
 **Получение списка всех категорий**
+
 [GET .../categories/](http://127.0.0.1:8000/api/v1/categories/)
 
 **Результат:**
@@ -142,6 +145,7 @@ python manage.py runserver
 ```
 
 **Категории жанров**
+
 [GET .../genres/](http://127.0.0.1:8000/api/v1/genres/)
 
 **Результат:**
@@ -176,6 +180,7 @@ python manage.py runserver
 }
 ```
 **Произведения, к которым пишут отзывы (определённый фильм, книга или песенка).**
+
 *[GET .../titles/](http://127.0.0.1:8000/api/v1/titles/)
 
 **Результат:**

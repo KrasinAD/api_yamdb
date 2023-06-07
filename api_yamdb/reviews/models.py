@@ -21,6 +21,9 @@ class User(AbstractUser):
         max_length=20,
         choices=ROLES,
         default='user'
+        max_length=16,
+        choices=ROLES,
+        default='user'
     )
 
     USERNAME_FIELD = 'username'

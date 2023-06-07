@@ -21,10 +21,14 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
-class UserCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('email', 'username')
+class UserCreateSerializer(serializers.Serializer):
+    username = serializers.RegexField(
+        regex=r'^[\w.@+-]+$',
+        max_length=150,
+    )
+    email = serializers.EmailField(
+        max_length=254,
+    )
 
     def validate(self, data):
         if data.get('username') == 'me':

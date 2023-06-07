@@ -1,5 +1,8 @@
 
 from django.contrib.auth.tokens import default_token_generator
+from rest_framework import mixins, status, viewsets 
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, permissions, viewsets, status
@@ -110,6 +113,9 @@ class CommentViewSet(viewsets.ModelViewSet):
         title_id = self.kwargs['title_id']
         review_id = self.kwargs['review_id']
         return Comment.objects.filter(review__title_id=title_id, review_id=review_id).select_related('author', 'review')
+from rest_framework.decorators import action
+from rest_framework.filters import SearchFilter
+from django.db import IntegrityError
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user, review_id=self.kwargs['review_id'])
@@ -121,10 +127,23 @@ class UserCreateViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = UserCreateSerializer
     permission_classes = (permissions.AllowAny,)
 
+    permission_classes = (AllowAny,)
+    
     def create(self, request):
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user, _ = User.objects.get_or_create(**serializer.validated_data)
+        email = serializer.validated_data.get('email')
+        username = serializer.validated_data['username']
+        try: 
+            user, _ = User.objects.get_or_create(
+                email=email,
+                username=username
+            ) 
+        except IntegrityError: 
+            return Response( 
+            'username или email уже заняты',
+            status=status.HTTP_400_BAD_REQUEST 
+        ) 
         confirmation_code = default_token_generator.make_token(user)
         send_mail(
             'Подтверждение регистрации.',
@@ -168,7 +187,7 @@ class UserViewSet(mixins.ListModelMixin,
     @action(
         methods=['get', 'patch'],
         detail=False,
-        permission_classes=(permissions.IsAuthenticated,)
+        permission_classes=(IsAuthenticated,)
     )
     def me(self, request):
         if request.method == 'PATCH':
@@ -203,13 +222,53 @@ class UserViewSet(mixins.ListModelMixin,
         serializer = UserSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(
+        detail=False,
+        methods=['get', 'patch', 'delete'],
+        url_path=r'(?P<username>[\w.@+-]+)',
+    )
+    def username(self, request, username):
+        user = get_object_or_404(User, username=username)
+        if request.method == 'PATCH':
+            serializer = UserSerializer(user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        elif request.method == 'DELETE':
+            user.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 
-
-# class CustomUserViewSet(viewsets.ModelViewSet):
-#     serializer_class = CustomUserSerializer
-#     queryset = CustomUser.objects.all()
+# class UserViewSet(viewsets.ModelViewSet):
+#     """Вьюсет для взаимодействия с пользователем."""
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+#     permission_classes = (IsAdmin,)
 #     pagination_class = LimitOffsetPagination
-#     permission_classes = (IsAuthenticated,)
 #     filter_backends = (SearchFilter,)
 #     search_fields = ('username',)
 #     lookup_field = 'username'
+#     http_method_names = ('get', 'post', 'patch', 'delete')
+
+#     @action(methods=['GET', 'PATCH'],
+#             detail=False,
+#             url_path='me',
+#             permission_classes=(IsAuthenticated,))
+#     def me(self, request):
+#         user = request.user
+#         if request.method == 'GET':
+#             serializer = self.get_serializer(user)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         if request.method == 'PATCH':
+#             serializer = UserSerializer(
+#                 user,
+#                 data=request.data,
+#                 partial=True
+#             )
+#             if serializer.is_valid(raise_exception=True):
+#                 serializer.save(role='user')
+#                 return Response(serializer.data, status=status.HTTP_200_OK)
+#         return Response(serializer.errors,
+#                             status=status.HTTP_405_METHOD_NOT_ALLOWED)

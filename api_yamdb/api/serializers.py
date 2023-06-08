@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from django.contrib.auth.tokens import default_token_generator
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
@@ -70,13 +71,14 @@ class UserCreateSerializer(serializers.Serializer):
         model = User
 
     def create(self, validated_data):
-        username = validated_data['username']
-        email = validated_data['email']
+
+        user = User.objects.create(**validated_data)
         send_confirmation_code(
-            email=email,
-            confirmation_code=default_token_generator.make_token(username)
+            email=user.email,
+            confirmation_code=default_token_generator.make_token(user)
         )
         return Response(validated_data)
+        return User.objects.create(**validated_data)
 
 
 class UserTokenSerializer(serializers.Serializer):

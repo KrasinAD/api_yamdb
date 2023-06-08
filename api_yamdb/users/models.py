@@ -4,7 +4,6 @@ from django.db import models
 USERNAME_CHARACTERS = 50
 
 
-
 class User(AbstractUser):
     USER = 'user'
     MODERATOR = 'moderator'

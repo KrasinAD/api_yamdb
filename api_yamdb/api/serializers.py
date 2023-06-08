@@ -4,9 +4,12 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.relations import SlugRelatedField
+from rest_framework.validators import UniqueValidator
+from rest_framework.response import Response
 
 from reviews.models import Category, Comment, Genre, Review, Title
 from users.models import User
+from users.utils import send_confirmation_code
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -18,30 +21,62 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.Serializer):
+    # username = serializers.RegexField(
+    #     regex=r'^[\w.@+-]+$',
+    #     max_length=150,
+    # )
+    # email = serializers.EmailField(
+    #     max_length=254,
+    # )
+
+    # def validate(self, data):
+    #     username = User.objects.filter(username=data['username'])
+    #     email = User.objects.filter(email=data['email'])
+    #     if data.get('username') == 'me':
+    #         raise serializers.ValidationError(
+    #             'Использовать имя me запрещено'
+    #         )
+    #     if username and not email:
+    #         raise serializers.ValidationError(
+    #             'Пользователь с таким username уже существует'
+    #         )
+    #     if email and not username:
+    #         raise serializers.ValidationError(
+    #             'Пользователь с таким email уже существует'
+    #         )
+    #     return data
+
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+$',
         max_length=150,
+        validators=[
+            UniqueValidator(queryset=User.objects.all())
+        ]
     )
     email = serializers.EmailField(
         max_length=254,
+        validators=[
+            UniqueValidator(queryset=User.objects.all())
+        ]
     )
 
-    def validate(self, data):
-        username = User.objects.filter(username=data['username'])
-        email = User.objects.filter(email=data['email'])
-        if data.get('username') == 'me':
-            raise serializers.ValidationError(
-                'Использовать имя me запрещено'
-            )
-        if username and not email:
-            raise serializers.ValidationError(
-                'Пользователь с таким username уже существует'
-            )
-        if email and not username:
-            raise serializers.ValidationError(
-                'Пользователь с таким email уже существует'
-            )
-        return data
+    def validate_username(self, value):
+        if value == "me":
+            raise serializers.ValidationError('Использовать имя me запрещено')
+        return value
+
+    class Meta:
+        fields = ("username", "email")
+        model = User
+
+    def create(self, validated_data):
+        username = validated_data['username']
+        email = validated_data['email']
+        send_confirmation_code(
+            email=email,
+            confirmation_code=default_token_generator.make_token(username)
+        )
+        return Response(validated_data)
 
 
 class UserTokenSerializer(serializers.Serializer):

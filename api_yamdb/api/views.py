@@ -1,5 +1,5 @@
 
-from django.contrib.auth.tokens import default_token_generator
+# from django.contrib.auth.tokens import default_token_generator
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, mixins, permissions, status, viewsets
@@ -19,7 +19,7 @@ from .serializers import (CategorySerializer, CommentSerializer,
                           UserTokenSerializer)
 from reviews.models import Category, Genre, Review, Title
 from users.models import User
-from users.utils import send_confirmation_code
+# from users.utils import send_confirmation_code
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -98,15 +98,15 @@ class UserCreate(generics.CreateAPIView):
     serializer_class = UserCreateSerializer
     permission_classes = (permissions.AllowAny,)
 
-    def create(self, request):
-        serializer = UserCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user, _ = User.objects.get_or_create(**serializer.validated_data)
-        send_confirmation_code(
-            email=user.email,
-            confirmation_code=default_token_generator.make_token(user)
-        )
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    # def create(self, request):
+    #     serializer = UserCreateSerializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+    #     user, _ = User.objects.get_or_create(**serializer.validated_data)
+    #     send_confirmation_code(
+    #         email=user.email,
+    #         confirmation_code=default_token_generator.make_token(user)
+    #     )
+    #     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class UserToken(generics.CreateAPIView):

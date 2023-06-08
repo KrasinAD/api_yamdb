@@ -27,17 +27,17 @@ class UserCreateSerializer(serializers.Serializer):
     )
 
     def validate(self, data):
+        username = User.objects.filter(username=data['username'])
+        email = User.objects.filter(email=data['email'])
         if data.get('username') == 'me':
             raise serializers.ValidationError(
                 'Использовать имя me запрещено'
             )
-        if (User.objects.filter(username=data['username'])
-            and not User.objects.filter(email=data['email'])):
+        if username and not email:
             raise serializers.ValidationError(
                 'Пользователь с таким username уже существует'
             )
-        if (User.objects.filter(email=data['email'])
-            and not User.objects.filter(username=data['username'])):
+        if email and not username:
             raise serializers.ValidationError(
                 'Пользователь с таким email уже существует'
             )

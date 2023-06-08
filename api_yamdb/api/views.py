@@ -19,7 +19,8 @@ from .serializers import (CategorySerializer, CommentSerializer,
                           ReviewSerializer, TitleSerializer,
                           UserCreateSerializer, UserSerializer,
                           UserTokenSerializer)
-from reviews.models import Category, Genre, Review, Title, User
+from reviews.models import Category, Genre, Review, Title
+from users.models import User
 
 
 class TitleViewSet(viewsets.ModelViewSet):

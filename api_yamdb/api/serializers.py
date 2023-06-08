@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from django.contrib.auth.tokens import default_token_generator
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
@@ -94,11 +92,6 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'year', 'description', 'genre', 'category'
         )
-
-    def validate_year(self, value):
-        if value > datetime.now().year:
-            raise serializers.ValidationError('Год больше текущего!')
-        return value
 
 
 class ReadOnlyTitleSerializer(serializers.ModelSerializer):

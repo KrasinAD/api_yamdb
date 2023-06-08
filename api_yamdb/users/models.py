@@ -3,6 +3,7 @@ from django.db import models
 
 USERNAME = 50
 
+
 class User(AbstractUser):
     USER = 'user'
     MODERATOR = 'moderator'

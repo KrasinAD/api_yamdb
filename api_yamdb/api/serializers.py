@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from django.contrib.auth.tokens import default_token_generator
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
@@ -32,6 +33,16 @@ class UserCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 'Использовать имя me запрещено'
             )
+        if (User.objects.filter(username=data['username'])
+            and not User.objects.filter(email=data['email'])):
+            raise serializers.ValidationError(
+                'Пользователь с таким username уже существует'
+            )
+        if (User.objects.filter(email=data['email'])
+            and not User.objects.filter(username=data['username'])):
+            raise serializers.ValidationError(
+                'Пользователь с таким email уже существует'
+            )
         return data
 
 
@@ -45,6 +56,15 @@ class UserTokenSerializer(serializers.Serializer):
         max_length=150,
         required=True
     )
+
+    def validate(self, data):
+        username = data['username']
+        confirmation_code = data['confirmation_code']
+        user = get_object_or_404(User, username=username)
+        if not default_token_generator.check_token(user, confirmation_code):
+            raise serializers.ValidationError(
+                '{confirmation_code}: Код подтверждения не верный.'
+            )
 
 
 class CategorySerializer(serializers.ModelSerializer):

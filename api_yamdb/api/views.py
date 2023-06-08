@@ -1,7 +1,5 @@
 
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
-from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, mixins, permissions, status, viewsets
@@ -21,6 +19,7 @@ from .serializers import (CategorySerializer, CommentSerializer,
                           UserTokenSerializer)
 from reviews.models import Category, Genre, Review, Title
 from users.models import User
+from users.utils import send_confirmation_code
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -102,23 +101,10 @@ class UserCreate(generics.CreateAPIView):
     def create(self, request):
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data.get('email')
-        username = serializer.validated_data.get('username')
-        try:
-            user, _ = User.objects.get_or_create(
-                email=email,
-                username=username
-            )
-        except IntegrityError:
-            return Response('username или email уже заняты',
-                            status=status.HTTP_400_BAD_REQUEST)
-        confirmation_code = default_token_generator.make_token(user)
-        send_mail(
-            'Подтверждение регистрации.',
-            f'Направляем confirmation_code: {confirmation_code}',
-            'admin@yamdb.com',
-            [user.email],
-            fail_silently=False,
+        user, _ = User.objects.get_or_create(**serializer.validated_data)
+        send_confirmation_code(
+            email=user.email,
+            confirmation_code=default_token_generator.make_token(user)
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -131,12 +117,8 @@ class UserToken(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = UserTokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        username = serializer.validated_data.get('username')
-        confirmation_code = serializer.validated_data.get('confirmation_code')
+        username = serializer.validated_data['username']
         user = get_object_or_404(User, username=username)
-        if not default_token_generator.check_token(user, confirmation_code):
-            message = {'confirmation_code': 'Код подтверждения не верный.'}
-            return Response(message, status=status.HTTP_400_BAD_REQUEST)
         message = {'token': str(AccessToken.for_user(user))}
         return Response(message, status=status.HTTP_201_CREATED)
 

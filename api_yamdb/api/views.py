@@ -20,6 +20,7 @@ from .serializers import (CategorySerializer, CommentSerializer,
 from reviews.models import Category, Genre, Review, Title
 from users.models import User
 # from users.utils import send_confirmation_code
+from django.db import IntegrityError
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -98,15 +99,16 @@ class UserCreate(generics.CreateAPIView):
     serializer_class = UserCreateSerializer
     permission_classes = (permissions.AllowAny,)
 
-    # def create(self, request):
-    #     serializer = UserCreateSerializer(data=request.data)
-    #     serializer.is_valid(raise_exception=True)
-    #     user, _ = User.objects.get_or_create(**serializer.validated_data)
-    #     send_confirmation_code(
-    #         email=user.email,
-    #         confirmation_code=default_token_generator.make_token(user)
-    #     )
-    #     return Response(serializer.data, status=status.HTTP_200_OK)
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        try:
+            instance = response.data
+        except IntegrityError:
+            return Response(
+                'username или email уже заняты',
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(instance, status=status.HTTP_200_OK)
 
 
 class UserToken(generics.CreateAPIView):

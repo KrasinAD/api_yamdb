@@ -1,12 +1,14 @@
-from django.contrib.auth.tokens import default_token_generator
-from django.db.models import Avg
-from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.relations import SlugRelatedField
-
+from rest_framework_simplejwt.tokens import AccessToken
 from reviews.models import Category, Comment, Genre, Review, Title
 from users.models import User
+from users.utils import send_confirmation_code
+
+from django.contrib.auth.tokens import default_token_generator
+from django.db.models import Avg
+from django.shortcuts import get_object_or_404
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -17,7 +19,7 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
-class UserCreateSerializer(serializers.Serializer):
+class UserCreateSerializer(serializers.ModelSerializer):
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+$',
         max_length=150,
@@ -43,6 +45,23 @@ class UserCreateSerializer(serializers.Serializer):
             )
         return data
 
+    def validate_username(self, value):
+        if value == "me":
+            raise serializers.ValidationError('Использовать имя me запрещено')
+        return value
+
+    class Meta:
+        fields = ('username', 'email')
+        model = User
+
+    def create(self, validated_data):
+        user, _ = User.objects.get_or_create(**validated_data)
+        send_confirmation_code(
+            email=user.email,
+            confirmation_code=default_token_generator.make_token(user)
+        )
+        return user
+
 
 class UserTokenSerializer(serializers.Serializer):
     username = serializers.RegexField(
@@ -63,6 +82,11 @@ class UserTokenSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 '{confirmation_code}: Код подтверждения не верный.'
             )
+
+    def create(self, validated_data):
+        username = validated_data['username']
+        user = get_object_or_404(User, username=username)
+        return {'token': str(AccessToken.for_user(user))}
 
 
 class CategorySerializer(serializers.ModelSerializer):

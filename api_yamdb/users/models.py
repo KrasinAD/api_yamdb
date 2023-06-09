@@ -1,7 +1,7 @@
+from api_yamdb.settings import USERNAME_CHARACTERS
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-
-USERNAME_CHARACTERS = 50
 
 
 class User(AbstractUser):

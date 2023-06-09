@@ -1,11 +1,14 @@
 
-from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
+from reviews.models import Category, Genre, Review, Title
+from users.models import User
+
+from django.shortcuts import get_object_or_404
 
 from .filters import TitlesFilter
 from .permissions import (IsAdmin, IsAdminOrReadOnly,
@@ -15,8 +18,6 @@ from .serializers import (CategorySerializer, CommentSerializer,
                           ReviewSerializer, TitleSerializer,
                           UserCreateSerializer, UserSerializer,
                           UserTokenSerializer)
-from reviews.models import Category, Genre, Review, Title
-from users.models import User
 
 
 class TitleViewSet(viewsets.ModelViewSet):

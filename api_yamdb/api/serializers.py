@@ -8,6 +8,7 @@ from rest_framework.relations import SlugRelatedField
 from reviews.models import Category, Comment, Genre, Review, Title
 from users.models import User
 from users.utils import send_confirmation_code
+from rest_framework_simplejwt.tokens import AccessToken
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -54,7 +55,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         model = User
 
     def create(self, validated_data):
-        user = User.objects.create(**validated_data)
+        user, _ = User.objects.get_or_create(**validated_data)
         send_confirmation_code(
             email=user.email,
             confirmation_code=default_token_generator.make_token(user)
@@ -81,6 +82,11 @@ class UserTokenSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 '{confirmation_code}: Код подтверждения не верный.'
             )
+
+    def create(self, validated_data):
+        username = validated_data['username']
+        user = get_object_or_404(User, username=username)
+        return {'token': str(AccessToken.for_user(user))}
 
 
 class CategorySerializer(serializers.ModelSerializer):

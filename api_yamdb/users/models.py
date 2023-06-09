@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-USERNAME_CHARACTERS = 50
+from api_yamdb.settings import USERNAME_CHARACTERS
 
 
 class User(AbstractUser):
@@ -14,11 +14,10 @@ class User(AbstractUser):
         (ADMIN, 'Admin'),
     )
 
-    email = models.EmailField('Электронная почта', max_length=254, unique=True)
+    email = models.EmailField('Электронная почта', unique=True)
     bio = models.TextField('Биография', max_length=500, blank=True)
     role = models.CharField('Тип пользователя', max_length=20,
                             choices=ROLES, default=USER)
-    # confirmation_code = models.CharField('Код подтверждения', max_length=150)
 
     USERNAME_FIELD = 'username'
     EMAIL_FIELD = 'email'

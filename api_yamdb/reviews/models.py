@@ -1,15 +1,14 @@
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
+from api_yamdb.settings import NAME_LENGTH, TEXT_CHARACTERS
 from .validators import validate_year
 from users.models import User
-
-TEXT_CHARACTERS = 50
 
 
 class Category(models.Model):
     slug = models.SlugField('Slug', max_length=50, unique=True)
-    name = models.CharField('Название', max_length=256)
+    name = models.CharField('Название', max_length=NAME_LENGTH)
 
     def __str__(self):
         return self.name
@@ -21,7 +20,7 @@ class Category(models.Model):
 
 class Genre(models.Model):
     slug = models.SlugField('Slug', max_length=50, unique=True)
-    name = models.CharField('Название', max_length=256)
+    name = models.CharField('Название', max_length=NAME_LENGTH)
 
     def __str__(self):
         return self.name
@@ -32,12 +31,13 @@ class Genre(models.Model):
 
 
 class Title(models.Model):
-    name = models.CharField('Название', max_length=256)
+    name = models.CharField('Название', max_length=NAME_LENGTH)
     description = models.TextField('Описание', blank=True, null=True)
     rating = models.IntegerField('Рейтинг', blank=True, null=True,
                                  default=None)
     year = models.IntegerField('Дата выхода',
-                               validators=(validate_year,))
+                               validators=(validate_year,),
+                               db_index=True)
     category = models.ForeignKey(
         Category,
         null=True,
@@ -99,7 +99,7 @@ class Review(models.Model):
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
         unique_together = ('title', 'author')
-        ordering = ('pub_date',)
+        ordering = ('-pub_date',)
 
 
 class Comment(models.Model):
@@ -120,4 +120,4 @@ class Comment(models.Model):
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
-        ordering = ('pub_date',)
+        ordering = ('-pub_date',)

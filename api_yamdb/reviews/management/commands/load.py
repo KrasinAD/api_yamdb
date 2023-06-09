@@ -1,8 +1,9 @@
 import csv
+
 from django.core.management.base import BaseCommand
-from reviews.models import (
-    Category, Comment, Genre, Review, Title, User, GenreTitle
-)
+
+from reviews.models import (Category, Comment, Genre,
+                            GenreTitle, Review, Title, User)
 
 CSV_PATH = 'static/data/'
 FOREIGN_KEY_FIELDS = ('category', 'author')
@@ -17,6 +18,7 @@ DICT = {
     GenreTitle: 'genre_title.csv'
 }
 
+
 def csv_import(csv_data, model):
     objects = []
     for row in csv_data:
@@ -26,6 +28,7 @@ def csv_import(csv_data, model):
                 del row[field]
         objects.append(model(**row))
     model.objects.bulk_create(objects)
+
 
 class Command(BaseCommand):
     help = 'импорт из .csv'

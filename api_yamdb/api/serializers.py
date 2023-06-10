@@ -19,7 +19,7 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
-class UserCreateSerializer(serializers.ModelSerializer):
+class UserCreateSerializer(serializers.Serializer):
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+$',
         max_length=150,
@@ -28,32 +28,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
         max_length=254,
     )
 
-    def validate(self, data):
-        username = User.objects.filter(username=data['username'])
-        email = User.objects.filter(email=data['email'])
-        if data.get('username') == 'me':
-            raise serializers.ValidationError(
-                'Использовать имя me запрещено'
-            )
-        if username and not email:
-            raise serializers.ValidationError(
-                'Пользователь с таким username уже существует'
-            )
-        if email and not username:
-            raise serializers.ValidationError(
-                'Пользователь с таким email уже существует'
-            )
-        return data
-
-    def validate_username(self, value):
-        if value == "me":
-            raise serializers.ValidationError('Использовать имя me запрещено')
-        return value
-
-    class Meta:
-        fields = ('username', 'email')
-        model = User
-
     def create(self, validated_data):
         user, _ = User.objects.get_or_create(**validated_data)
         send_confirmation_code(
@@ -61,6 +35,25 @@ class UserCreateSerializer(serializers.ModelSerializer):
             confirmation_code=default_token_generator.make_token(user)
         )
         return user
+
+    # добавили метод exists(), но конструкцию не меняли,
+    # т.к по-другому проверка pytest выдает ошибки
+    def validate(self, data):
+        is_username = User.objects.filter(username=data['username']).exists()
+        is_email = User.objects.filter(email=data['email']).exists()
+        if data.get('username') == 'me':
+            raise serializers.ValidationError(
+                'Использовать имя me запрещено'
+            )
+        if is_username and not is_email:
+            raise serializers.ValidationError(
+                'Пользователь с таким username уже существует'
+            )
+        if is_email and not is_username:
+            raise serializers.ValidationError(
+                'Пользователь с таким email уже существует'
+            )
+        return data
 
 
 class UserTokenSerializer(serializers.Serializer):
